@@ -46,6 +46,8 @@
         return;
     }
 
+    self.isCalledFromPlayPreviousItem = YES;
+
     [self pause];
     // Note: it is necessary to have seekToTime called twice in this method, once before and once after re-making the area. If it is not present before, the player will resume from the same spot in the next song when the previous song finishes playing; if it is not present after, the previous song will be played from the same spot that the current song was on.
     [self seekToTime:kCMTimeZero toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
@@ -53,16 +55,16 @@
     int tempNowPlayingIndex = self.nowPlayingIndex;
     NSMutableArray *tempPlaylist = [[NSMutableArray alloc]initWithArray:self.innerItems];
     [self removeAllItems];
-    self.isCalledFromPlayPreviousItem = YES;
     for (int i = tempNowPlayingIndex - 1; i < [tempPlaylist count]; i++) {
         [self insertItem:[tempPlaylist objectAtIndex:i] afterItem:nil];
     }
-    self.isCalledFromPlayPreviousItem = NO;
     // The temp index is necessary since removeAllItems resets the nowPlayingIndex
     self.nowPlayingIndex = tempNowPlayingIndex - 1;
     // Not a typo; see above comment
     [self seekToTime:kCMTimeZero toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
     [self play];
+    
+    self.isCalledFromPlayPreviousItem = NO;
 }
 
 - (NSInteger)index {
@@ -70,20 +72,22 @@
 }
 
 - (void)playBeginningItem {
+    self.isCalledFromPlayPreviousItem = YES;
+
     [self pause];
     [self seekToTime:kCMTimeZero toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
     NSMutableArray *tempPlaylist = [[NSMutableArray alloc]initWithArray:self.innerItems];
     [self removeAllItems];
-    self.isCalledFromPlayPreviousItem = YES;
     for (AVPlayerItem *item in tempPlaylist) {
         [self insertItem:item afterItem:nil];
     }
-    self.isCalledFromPlayPreviousItem = NO;
     // The temp index is necessary since removeAllItems resets the nowPlayingIndex
     self.nowPlayingIndex = 0;
     // Not a typo; see above comment
     [self seekToTime:kCMTimeZero toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
     [self play];
+    
+    self.isCalledFromPlayPreviousItem = NO;
 }
 
 #pragma mark - AVQueuePlayer Methods
@@ -93,7 +97,10 @@
     // nowPlayingIndex to 0.
     [super removeAllItems];
     self.nowPlayingIndex = 0;
-    [self.innerItems removeAllObjects];
+    
+    if (!self.isCalledFromPlayPreviousItem) {
+        [self.innerItems removeAllObjects];
+    }
 }
 
 - (void)removeItem:(AVPlayerItem *)item {
@@ -121,6 +128,7 @@
     } else {
         [self playBeginningItem];
     }
+    [self seekToTime:kCMTimeZero toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
 }
 
 - (void)insertItem:(AVPlayerItem *)item afterItem:(AVPlayerItem *)afterItem {
@@ -131,6 +139,10 @@
         if ([self.innerItems indexOfObject:item] < self.nowPlayingIndex) {
             self.nowPlayingIndex++;
         }
+    }
+    
+    if (self.isCalledFromPlayPreviousItem) {
+        return;
     }
 
     if ([self.innerItems containsObject:afterItem]){ // AfterItem is non-nil

@@ -20,9 +20,9 @@
     // This function calls the constructor for AVQueuePlayer, then sets up the nowPlayingIndex to 0 and saves the array that the player was generated from as itemsForPlayer
     self = [super initWithItems:items];
     if (self){
-        self.innerItems = [NSMutableArray arrayWithArray:items];
-        self.nowPlayingIndex = 0;
-        self.isCalledFromPlayPreviousItem = NO;
+        _innerItems = [NSMutableArray arrayWithArray:items];
+        _nowPlayingIndex = 0;
+        _isCalledFromPlayPreviousItem = NO;
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(songEnded:) name:AVPlayerItemDidPlayToEndTimeNotification object:nil];
     }
     return self;
@@ -32,8 +32,15 @@
     return [self.innerItems copy];
 }
 
+- (void)setNowPlayingIndex:(NSInteger)nowPlayingIndex {
+    NSInteger previousIndex = _nowPlayingIndex;
+    _nowPlayingIndex = nowPlayingIndex;
+    if ([self.delegate respondsToSelector:@selector(queuePlayer:didStartPlayingItem:)] && nowPlayingIndex < self.innerItems.count && previousIndex != nowPlayingIndex) {
+        [self.delegate queuePlayer:self didStartPlayingItem:self.innerItems[nowPlayingIndex]];
+    }
+}
+
 - (void)songEnded:(NSNotification *)notification {
-    [self.delegate queuePlayerDidReceiveNotificationForSongIncrement:self];
     if (self.nowPlayingIndex < [self.innerItems count] - 1) {
         self.nowPlayingIndex++;
     } else {
@@ -153,6 +160,13 @@
         }
     } else { // afterItem is nil
         [self.innerItems addObject:item];
+    }
+}
+
+- (void)play {
+    [super play];
+    if ([self.delegate respondsToSelector:@selector(queuePlayer:didStartPlayingItem:)] && !self.isCalledFromPlayPreviousItem && self.nowPlayingIndex < self.innerItems.count) {
+        [self.delegate queuePlayer:self didStartPlayingItem:self.innerItems[self.nowPlayingIndex]];
     }
 }
 

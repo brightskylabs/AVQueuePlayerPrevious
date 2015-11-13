@@ -8,8 +8,9 @@
 @class AVQueuePlayerPrevious;
 
 @protocol AVQueuePlayerPreviousDelegate <NSObject>
+@optional
 
-- (void)queuePlayerDidReceiveNotificationForSongIncrement:(AVQueuePlayerPrevious *)previousPlayer;
+- (void)queuePlayer:(AVQueuePlayerPrevious *)player didStartPlayingItem:(AVPlayerItem *)item;
 
 @end
 
